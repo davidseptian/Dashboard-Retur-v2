@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dashboard Retur Marketplace — Hypospot</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/d3@7/dist/d3.min.js"></script>
+<script>
+  // ====== PENGATURAN (khusus GitHub Pages) ======
+  // Isi dengan URL Web App Apps Script (berakhiran /exec). URL ini bukan rahasia.
+  // Token TIDAK ditulis di sini: dashboard akan menanyakannya sekali dan menyimpannya di browser.
+  window.HR_CONFIG = { apiUrl: '' };
+</script>
+<style>
+:root{--gold:#D4AF37;--gold2:#F1DC8E;--gold3:#8C7326;--ink:#0B0B0B;--card:#151513;--line:#2B2820;--txt:#F4EFE2;--mute:#A79F8A}
+*{box-sizing:border-box}
+html,body{margin:0;background:var(--ink)}
+.hr{background:var(--ink);color:var(--txt);font-family:'Plus Jakarta Sans',system-ui,sans-serif;padding:clamp(16px,3vw,32px);min-height:100vh;max-width:1400px;margin:0 auto}
+.hr-head{display:flex;flex-wrap:wrap;gap:16px;justify-content:space-between;align-items:flex-end;border-bottom:1px solid var(--gold3);padding-bottom:18px;margin-bottom:18px}
+.hr-brand{font-size:12px;letter-spacing:.18em;text-transform:uppercase;color:var(--gold);font-weight:700;margin:0 0 6px}
+.hr-title{font-size:clamp(22px,3vw,30px);font-weight:700;margin:0;line-height:1.15}
+.hr-title span{color:var(--gold)}
+.hr-lead{margin:10px 0 0;color:var(--mute);font-size:14px;line-height:1.55;max-width:820px}
+.hr-lead b{color:var(--gold2);font-weight:600}
+.hr-filters{display:flex;gap:10px;flex-wrap:wrap;align-items:flex-end}
+.hr-filters label{display:flex;flex-direction:column;gap:4px;font-size:11px;letter-spacing:.08em;text-transform:uppercase;color:var(--mute)}
+.hr-sel,.hr-in{background:#1C1B17;color:var(--txt);border:1px solid var(--gold3);border-radius:8px;padding:8px 10px;font:inherit;font-size:14px;color-scheme:dark}
+.hr-sel{min-width:150px}
+.hr-in{width:100%}
+.hr-sel:focus,.hr-in:focus{outline:2px solid var(--gold);outline-offset:1px}
+.hr-btn{background:transparent;color:var(--gold);border:1px solid var(--gold3);border-radius:8px;padding:8px 12px;font:inherit;font-size:13px;cursor:pointer}
+.hr-btn:hover{background:#1C1B17}
+.hr-bar{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin:0 0 16px;border-bottom:1px solid var(--line)}
+.hr-tabs{display:flex;gap:6px}
+.hr-tab{background:transparent;border:0;border-bottom:2px solid transparent;color:var(--mute);font:inherit;font-size:14px;font-weight:600;padding:10px 14px;cursor:pointer;margin-bottom:-1px}
+.hr-tab[aria-selected="true"]{color:var(--gold);border-bottom-color:var(--gold)}
+.hr-sync{font-size:12px;color:var(--mute);display:flex;gap:10px;align-items:center;padding-bottom:6px}
+.hr-sync .dot{width:8px;height:8px;border-radius:50%;background:#5A574E;display:inline-block;margin-right:6px}
+.hr-sync .dot.ok{background:#7FC27A}.hr-sync .dot.err{background:#C0533A}.hr-sync .dot.load{background:var(--gold)}
+.hr-alert{background:#2A1712;border:1px solid #5A2A20;color:#F4C3B5;border-radius:10px;padding:12px 14px;font-size:13px;margin-bottom:14px;line-height:1.5}
+.hr-kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;margin-bottom:16px}
+.hr-kpi{background:var(--card);border:1px solid var(--line);border-top:2px solid var(--gold);border-radius:12px;padding:14px 16px}
+.hr-kpi h3{margin:0;font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--mute);font-weight:600}
+.hr-kpi .v{font-size:30px;font-weight:700;margin-top:6px;font-variant-numeric:tabular-nums;line-height:1.1}
+.hr-kpi .s{font-size:12px;color:var(--mute);margin-top:4px}
+.hr-kpi .s b{color:var(--gold2);font-weight:600}
+.hr-kpi.bad{border-top-color:#C0533A}.hr-kpi.warn{border-top-color:#E0A33A}
+.hr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:14px;margin-bottom:14px}
+.hr-card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;min-width:0}
+.hr-card.wide{grid-column:1/-1}
+.hr-card h2{margin:0 0 2px;font-size:15px;font-weight:700}
+.hr-card .sub{margin:0 0 12px;font-size:12px;color:var(--mute)}
+.hr-chart{position:relative;min-height:240px}
+.hr-chart svg{display:block;overflow:visible}
+.hr-chart text{fill:var(--mute);font-size:11px;font-family:inherit}
+.hr-chart .lbl{fill:var(--txt);font-size:12px}
+.hr-chart .val{fill:var(--gold2);font-size:11px;font-weight:600}
+.hr-tip{position:absolute;pointer-events:none;background:#000;border:1px solid var(--gold);color:var(--txt);border-radius:8px;padding:8px 10px;font-size:12px;line-height:1.45;white-space:nowrap;z-index:5}
+.hr-tip b{color:var(--gold)}
+.hr-legend{display:flex;gap:14px;flex-wrap:wrap;font-size:12px;color:var(--mute);margin-top:8px}
+.hr-legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:6px;vertical-align:-1px}
+.hr-msg{color:var(--mute);font-size:13px;padding:30px 0;text-align:center}
+.hr-tablewrap{overflow:auto;max-height:520px;border:1px solid var(--line);border-radius:10px}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+th{position:sticky;top:0;background:#1C1B17;color:var(--gold);text-align:left;font-weight:600;padding:9px 10px;white-space:nowrap;border-bottom:1px solid var(--gold3);font-size:11px;letter-spacing:.05em;text-transform:uppercase}
+td{padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+tr:hover td{background:#1A1916}
+.hr-pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:11px;border:1px solid var(--line);white-space:nowrap}
+.hr-pill.ok{color:#9FD39A;border-color:#2F4A2C}.hr-pill.kemas{color:#E8C66A;border-color:#5A4A1F}.hr-pill.rusak{color:#F09A84;border-color:#5A2A20}.hr-pill.kosong{color:var(--mute)}
+.hr-tools{display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:10px}
+.hr-tools .hr-in{flex:1;min-width:180px;width:auto}
+.hr-count{font-size:12px;color:var(--mute)}
+td.issue{color:#F0B37E}
+.hr-foot{margin-top:16px;font-size:12px;color:var(--mute);line-height:1.6}
+.hr-foot summary{cursor:pointer;color:var(--gold)}
+.hr-form{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,220px),1fr));gap:14px}
+.hr-form .full{grid-column:1/-1}
+.hr-field{display:flex;flex-direction:column;gap:6px;font-size:12px;color:var(--mute);font-weight:600;letter-spacing:.03em}
+.hr-field em{color:#E0A33A;font-style:normal}
+.hr-lines{display:flex;flex-direction:column;gap:10px}
+.hr-line{display:grid;grid-template-columns:minmax(0,1fr) 90px 110px 40px;gap:8px;align-items:end}
+.hr-line .hr-field{gap:4px}
+.hr-x{background:transparent;border:1px solid var(--line);color:var(--mute);border-radius:8px;height:40px;cursor:pointer;font-size:16px}
+.hr-x:hover:not(:disabled){color:#F09A84;border-color:#5A2A20}
+.hr-x:disabled{opacity:.3;cursor:default}
+.hr-actions{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+.hr-primary{background:var(--gold);color:#0B0B0B;border:0;border-radius:8px;padding:11px 20px;font:inherit;font-weight:700;font-size:14px;cursor:pointer}
+.hr-primary:disabled{opacity:.5;cursor:wait}
+.hr-formmsg{font-size:13px;line-height:1.5;min-height:20px}
+.hr-formmsg.ok{color:#9FD39A}.hr-formmsg.warn{color:#E8C66A}.hr-formmsg.err{color:#F09A84}.hr-formmsg.info{color:var(--mute)}
+.hr-hint{font-size:12px;color:var(--mute);margin:0;line-height:1.5}
+.hr-modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;padding:20px;z-index:50}
+.hr-modal .box{background:var(--card);border:1px solid var(--gold3);border-radius:14px;padding:22px;max-width:460px;width:100%;display:flex;flex-direction:column;gap:12px}
+.hr-modal h2{margin:0;font-size:17px}
+[hidden]{display:none !important}
+@media (max-width:560px){.hr-line{grid-template-columns:minmax(0,1fr) 70px 40px}.hr-line .stok{display:none}}
+</style>
+</head>
+<body>
+<div class="hr">
+  <header class="hr-head">
+    <div>
+      <p class="hr-brand">Hypospot Shoes Care · Laporan Retur</p>
+      <h1 class="hr-title">Dashboard <span>Retur Marketplace</span></h1>
+      <p class="hr-lead" id="lead">Memuat data dari spreadsheet…</p>
+    </div>
+    <div class="hr-filters" id="filter">
+      <label>Bulan<select class="hr-sel" id="f-bulan" aria-label="Filter bulan"></select></label>
+      <label>Marketplace<select class="hr-sel" id="f-mp" aria-label="Filter marketplace"></select></label>
+      <button class="hr-btn" type="button" id="reset-filter">Reset filter</button>
+    </div>
+  </header>
+
+  <div class="hr-bar">
+    <nav class="hr-tabs" role="tablist" aria-label="Menu">
+      <button class="hr-tab" type="button" role="tab" data-tab="dashboard" aria-selected="true">Dashboard</button>
+      <button class="hr-tab" type="button" role="tab" data-tab="input" aria-selected="false">+ Input Retur</button>
+    </nav>
+    <div class="hr-sync"><span><span class="dot" id="sync-dot"></span><span id="sync-text">Belum tersambung</span></span><button class="hr-btn" type="button" id="btn-refresh">Refresh</button><button class="hr-btn" type="button" id="btn-setting" hidden>Pengaturan</button></div>
+  </div>
+
+  <div class="hr-alert" id="alert" hidden></div>
+
+  <!-- ============ INPUT ============ -->
+  <section id="tab-input" hidden>
+    <div class="hr-card">
+      <h2>Input retur baru</h2>
+      <p class="sub">Isian ini langsung ditambahkan sebagai baris baru di bawah data terakhir tab Input Return. Satu pesanan berisi beberapa produk tercatat satu baris per produk.</p>
+      <form id="form-retur" class="hr-form" autocomplete="off" novalidate>
+        <label class="hr-field"><span>ID pesanan <em>*</em></span><input class="hr-in" id="in-id" type="text" placeholder="mis. 586653675762517347 atau SPXID…"></label>
+        <label class="hr-field"><span>Tanggal notifikasi <em>*</em></span><input class="hr-in" id="in-tn" type="date" min="2024-01-01" max="2030-12-31"></label>
+        <label class="hr-field"><span>Tanggal barang diterima <em>*</em></span><input class="hr-in" id="in-td" type="date" min="2024-01-01" max="2030-12-31"></label>
+        <label class="hr-field"><span>Marketplace <em>*</em></span>
+          <select class="hr-in" id="in-mp"><option value="">Pilih marketplace…</option><option>Shopee</option><option>Tiktok</option><option>Tokopedia</option><option>Lazada</option><option>Other</option></select></label>
+        <label class="hr-field">Nama customer<input class="hr-in" id="in-cust" type="text" placeholder="Nama / username pembeli"></label>
+        <label class="hr-field"><span>Alasan retur <em>*</em></span>
+          <select class="hr-in" id="in-alasan"><option>Dibatalkan sistem</option><option>Pembeli Tidak ditemukan</option><option>Kurir bermasalah</option><option>Other</option></select></label>
+        <label class="hr-field"><span>Status barang datang <em>*</em></span>
+          <select class="hr-in" id="in-status"><option>OK</option><option>Produk Rusak</option><option>Produk Re-package</option><option>Kecurangan</option></select></label>
+        <label class="hr-field"><span>Kategori kondisi <em>*</em></span>
+          <select class="hr-in" id="in-kondisi"><option>Masih bisa dipakai</option><option>Kemas Ulang</option><option>Rusak Ringan</option><option>Rusak Berat</option></select></label>
+        <div class="full">
+          <div class="hr-field" style="margin-bottom:8px"><span>Produk yang kembali <em>*</em></span></div>
+          <div class="hr-lines" id="in-lines"></div>
+          <button class="hr-btn" type="button" id="in-add" style="margin-top:10px">+ Tambah produk</button>
+          <p class="hr-hint" style="margin-top:8px">"Masuk stok" = qty yang dikembalikan ke stok (kolom Status Stok). Boleh dikosongkan.</p>
+        </div>
+        <label class="hr-field full">Catatan<input class="hr-in" id="in-catatan" type="text" placeholder="Opsional"></label>
+        <div class="full hr-actions">
+          <button class="hr-primary" type="submit" id="in-save">Simpan ke Google Sheet</button>
+          <button class="hr-btn" type="button" id="in-clear">Kosongkan form</button>
+          <div class="hr-formmsg info" id="in-msg" role="status" aria-live="polite"></div>
+        </div>
+      </form>
+    </div>
+  </section>
+
+  <!-- ============ DASHBOARD ============ -->
+  <section id="tab-dashboard">
+    <section class="hr-kpis">
+      <div class="hr-kpi"><h3>Pesanan retur</h3><div class="v" id="k-pesanan">—</div><div class="s">baris di Input Return</div></div>
+      <div class="hr-kpi"><h3>Total qty retur</h3><div class="v" id="k-qty">—</div><div class="s">pcs barang kembali</div></div>
+      <div class="hr-kpi"><h3>Masih bisa dipakai</h3><div class="v"><span id="k-layak">—</span>%</div><div class="s"><b id="k-layak-qty">—</b> pcs bisa masuk stok lagi</div></div>
+      <div class="hr-kpi warn"><h3>Kemas ulang</h3><div class="v" id="k-kemas">—</div><div class="s">pcs perlu repackaging</div></div>
+      <div class="hr-kpi bad"><h3>Rusak</h3><div class="v" id="k-rusak">—</div><div class="s"><b id="k-rusak-pct">—</b>% dari qty · <b id="k-rusak-berat">—</b> berat</div></div>
+      <div class="hr-kpi warn"><h3>Baris perlu dicek</h3><div class="v" id="k-cek">—</div><div class="s"><b id="k-stok">—</b> baris Status Stok masih kosong</div></div>
+    </section>
+
+    <div class="hr-grid">
+      <section class="hr-card wide">
+        <h2>Tren retur per bulan</h2>
+        <p class="sub">Qty retur per bulan notifikasi, ditumpuk per marketplace. Klik batang untuk memfilter bulan itu.</p>
+        <div class="hr-chart" id="c-bulan"></div>
+        <div class="hr-legend"><span><i style="background:#D4AF37"></i>Shopee</span><span><i style="background:#F1DC8E"></i>TikTok Shop</span><span><i style="background:#8C7326"></i>Tokopedia</span><span><i style="background:#5A574E"></i>Lainnya (Lazada, Other, belum diisi)</span></div>
+      </section>
+      <section class="hr-card"><h2>Retur per marketplace</h2><p class="sub">Qty retur dan porsinya, sesuai filter.</p><div class="hr-chart" id="c-mp"></div></section>
+      <section class="hr-card"><h2>Kondisi barang kembali</h2><p class="sub">Qty per kategori kondisi saat barang diterima gudang.</p><div class="hr-chart" id="c-kondisi"></div></section>
+      <section class="hr-card"><h2>Produk paling sering diretur</h2><p class="sub">10 produk dengan qty retur tertinggi. Pesanan berisi beberapa produk dibagi rata qty-nya.</p><div class="hr-chart" id="c-produk"></div></section>
+      <section class="hr-card"><h2>Alasan retur</h2><p class="sub">Jumlah pesanan per alasan yang tercatat.</p><div class="hr-chart" id="c-alasan"></div></section>
+
+      <section class="hr-card wide">
+        <h2>Detail retur</h2>
+        <p class="sub">Semua baris sesuai filter, terbaru di atas.</p>
+        <div class="hr-tools"><input class="hr-in" id="cari" type="search" placeholder="Cari ID pesanan, customer, atau produk…" aria-label="Cari di detail retur"><span class="hr-count" id="detail-count">—</span></div>
+        <div class="hr-tablewrap"><table>
+          <thead><tr><th>Tgl notifikasi</th><th>Marketplace</th><th>ID pesanan</th><th>Customer</th><th>Produk</th><th class="n">Qty</th><th>Alasan</th><th>Status barang</th><th>Kondisi</th><th>Status stok</th></tr></thead>
+          <tbody id="t-detail"></tbody>
+        </table></div>
+      </section>
+
+      <section class="hr-card wide">
+        <h2>Baris yang perlu dicek di spreadsheet</h2>
+        <p class="sub">Isian kosong, ID pesanan dobel, tanggal terima sebelum notifikasi, atau ID yang tidak cocok dengan marketplace. Nomor baris = baris di tab Input Return.</p>
+        <div class="hr-tablewrap" style="max-height:360px"><table>
+          <thead><tr><th class="n">Baris</th><th>ID pesanan</th><th>Tgl notifikasi</th><th>Marketplace</th><th>Produk</th><th>Yang perlu dicek</th></tr></thead>
+          <tbody id="t-cek"></tbody>
+        </table></div>
+      </section>
+    </div>
+
+    <details class="hr-foot">
+      <summary>Cara kerja dashboard ini</summary>
+      <p>Data dibaca langsung dari Google Sheet "REPORT RETUR MP" tab Input Return lewat Google Apps Script, dan diperbarui otomatis setiap 60 detik selama halaman dibuka. Baris baru, baik dari menu Input Retur maupun yang diketik langsung di sheet, otomatis ikut terhitung. Periode memakai Tanggal Notifikasi. Kondisi diambil dari kolom Kategori Kondisi; "Rusak" menjumlahkan Rusak Berat dan Rusak Ringan, dan baris yang kosong dihitung sebagai "Belum diisi".</p>
+    </details>
+  </section>
+</div>
+
+<!-- Pengaturan koneksi (GitHub Pages) -->
+<div class="hr-modal" id="modal" hidden>
+  <form class="box" id="modal-form">
+    <h2>Sambungkan ke spreadsheet</h2>
+    <p class="hr-hint">Masukkan URL Web App Apps Script (berakhiran <b>/exec</b>) dan API token dari Script Properties. Disimpan hanya di browser ini.</p>
+    <label class="hr-field">URL Web App<input class="hr-in" id="cfg-url" type="url" placeholder="https://script.google.com/macros/s/…/exec"></label>
+    <label class="hr-field">API token<input class="hr-in" id="cfg-token" type="password" placeholder="Token dari Script Properties"></label>
+    <div class="hr-actions"><button class="hr-primary" type="submit">Simpan & sambungkan</button><button class="hr-btn" type="button" id="cfg-cancel">Batal</button></div>
+  </form>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  const BL = ['Jan','Feb','Mar','Apr','Mei','Jun','Jul','Agu','Sep','Okt','Nov','Des'];
+  const MPC = {'Shopee':'#D4AF37','TikTok Shop':'#F1DC8E','Tokopedia':'#8C7326','Lazada':'#B8A16A','Other':'#7A7466','Lainnya':'#5A574E','Belum diisi':'#5A574E'};
+  const KC = {'Masih bisa dipakai':'#D4AF37','Kemas Ulang':'#E0A33A','Rusak Ringan':'#D97B4F','Rusak Berat':'#C0533A','Belum diisi':'#5A574E'};
+  const $ = (id) => document.getElementById(id);
+  const fmt = (n) => (n == null || isNaN(n)) ? '—' : Number(n).toLocaleString('id-ID', {maximumFractionDigits: 1});
+  const bulanLabel = (b) => { if (!b) return 'Tanpa tanggal'; const [y, m] = b.split('-'); return BL[+m - 1] + ' ' + y; };
+  const tglLabel = (d) => { if (!d) return '—'; const [y, m, dd] = d.split('-'); return +dd + ' ' + BL[+m - 1] + ' ' + y; };
+  const pad = (n) => String(n).padStart(2, '0');
+  const todayIso = () => { const d = new Date(); return d.getFullYear() + '-' + pad(d.getMonth() + 1) + '-' + pad(d.getDate()); };
+  const splitProduk = (s) => s.split(/,(?![^"]*")/).map((x) => x.replace(/"/g, '').trim()).filter(Boolean);
+
+  /* ================= KONEKSI ================= */
+  const inAppsScript = typeof google !== 'undefined' && google.script && google.script.run;
+  const LS = (k, v) => { try { if (v === undefined) return localStorage.getItem(k); if (v === null) localStorage.removeItem(k); else localStorage.setItem(k, v); } catch (e) { return null; } };
+  const cfg = () => ({url: (window.HR_CONFIG && window.HR_CONFIG.apiUrl) || LS('hr_retur_url') || '', token: LS('hr_retur_token') || ''});
+
+  function callApi(action, payload) {
+    if (inAppsScript) {
+      return new Promise((resolve, reject) => {
+        const run = google.script.run.withSuccessHandler(resolve).withFailureHandler((e) => reject(new Error(e && e.message || String(e))));
+        if (action === 'data') run.getData(); else run.appendRows(payload);
+      });
+    }
+    const c = cfg();
+    if (!c.url || !c.token) return Promise.reject(Object.assign(new Error('Koneksi belum diatur.'), {code: 'no_config'}));
+    return fetch(c.url, {method: 'POST', body: JSON.stringify({token: c.token, action: action, rows: payload})})
+      .then((r) => r.json())
+      .then((j) => { if (!j.ok) throw Object.assign(new Error(j.error || 'Gagal.'), {code: j.code}); return j; });
+  }
+
+  /* ================= PARSER (sama dengan versi Claude) ================= */
+  function parseRows(values) {
+    const table = (values || []).map((r) => r.map((c) => (c == null ? '' : String(c))));
+    if (!table.length) return [];
+    const head = table[0].map((h) => h.trim().toLowerCase());
+    const col = (name) => head.indexOf(name.toLowerCase());
+    const ix = {id: col('ID Pesanan'), tn: col('Tanggal Notifikasi'), td: col('Tanggal Barang Diterima'), mp: col('Marketplace'), cu: col('Nama Customer'), pr: col('Nama Produk'), qt: col('Qty Retur'), al: col('Alasan Retur'), sb: col('Status Barang Dateng'), ko: col('Kategori Kondisi'), ss: col('Status Stok'), ca: col('Catatan')};
+    const M = {jan: 1, feb: 2, mar: 3, apr: 4, mei: 5, may: 5, jun: 6, jul: 7, agu: 8, ags: 8, aug: 8, sep: 9, okt: 10, oct: 10, nov: 11, des: 12, dec: 12};
+    const tgl = (s) => {
+      s = (s || '').trim(); if (!s) return null; let m;
+      if ((m = s.match(/^(\d{1,2})[\s\-]+([A-Za-z]+)[\s\-]+(\d{4})$/))) { const mo = M[m[2].slice(0, 3).toLowerCase()]; return mo ? m[3] + '-' + pad(mo) + '-' + pad(m[1]) : null; }
+      if ((m = s.match(/^(\d{4})-(\d{1,2})-(\d{1,2})/))) return m[1] + '-' + pad(m[2]) + '-' + pad(m[3]);
+      if ((m = s.match(/^(\d{1,2})[\/.](\d{1,2})[\/.](\d{4})$/))) { let d = +m[1], mo = +m[2]; if (mo > 12 && d <= 12) { const t = d; d = mo; mo = t; } return mo >= 1 && mo <= 12 ? m[3] + '-' + pad(mo) + '-' + pad(d) : null; }
+      return null;
+    };
+    const mpNorm = (s) => { const t = (s || '').trim().toLowerCase(); if (!t) return 'Belum diisi'; if (t.startsWith('shop')) return 'Shopee'; if (t.startsWith('tik')) return 'TikTok Shop'; if (t.startsWith('toko')) return 'Tokopedia'; if (t.startsWith('laz')) return 'Lazada'; if (t.startsWith('oth') || t.startsWith('lain')) return 'Other'; return (s || '').trim(); };
+    const kondNorm = (s) => { const t = (s || '').trim().toLowerCase(); if (!t) return 'Belum diisi'; if (t.includes('bisa')) return 'Masih bisa dipakai'; if (t.includes('kemas')) return 'Kemas Ulang'; if (t.includes('ringan')) return 'Rusak Ringan'; if (t.includes('rusak')) return 'Rusak Berat'; return (s || '').trim(); };
+    const g = (r, k) => { const v = ix[k] >= 0 && r[ix[k]] != null ? String(r[ix[k]]).trim() : ''; return k === 'id' ? v.replace(/^'+/, '') : v; };
+    const out = [];
+    for (let i = 1; i < table.length; i++) {
+      const r = table[i];
+      if (!r.some((c) => String(c).trim() !== '')) continue;
+      const qRaw = g(r, 'qt'); const qn = qRaw === '' ? null : Number(qRaw.replace(',', '.'));
+      const tn = tgl(g(r, 'tn')), td = tgl(g(r, 'td'));
+      out.push({
+        no: i + 1, id_pesanan: g(r, 'id'), tgl_notifikasi: tn, tgl_diterima: td, bulan: tn ? tn.slice(0, 7) : '',
+        marketplace: mpNorm(g(r, 'mp')), customer: g(r, 'cu'), produk: g(r, 'pr'),
+        qty: (qn == null || isNaN(qn)) ? null : qn,
+        alasan: g(r, 'al') || 'Belum diisi', status_barang: g(r, 'sb') || 'Belum diisi', kondisi: kondNorm(g(r, 'ko')),
+        status_stok: g(r, 'ss'), catatan: g(r, 'ca'), tgl_notifikasi_asli: g(r, 'tn'), cek: ''
+      });
+    }
+    const cnt = {}; out.forEach((r) => { if (r.id_pesanan) cnt[r.id_pesanan] = (cnt[r.id_pesanan] || 0) + 1; });
+    out.forEach((r) => {
+      const c = [];
+      if (!r.id_pesanan) c.push('ID pesanan kosong'); else if (cnt[r.id_pesanan] > 1) c.push('ID pesanan dobel');
+      if (!r.produk) c.push('Produk kosong');
+      if (r.qty == null) c.push('Qty kosong');
+      if (r.marketplace === 'Belum diisi') c.push('Marketplace kosong');
+      if (!r.customer) c.push('Nama customer kosong');
+      if (r.kondisi === 'Belum diisi') c.push('Kondisi kosong');
+      if (!r.tgl_notifikasi) c.push('Tgl notifikasi tidak terbaca');
+      if (r.tgl_notifikasi && r.tgl_diterima && r.tgl_diterima < r.tgl_notifikasi) c.push('Tgl diterima sebelum notifikasi');
+      if (r.marketplace === 'Shopee' && /^\d{18}$/.test(r.id_pesanan)) c.push('Format ID mirip Tokopedia/TikTok, tapi tertulis Shopee');
+      r.cek = c.join(' · ');
+    });
+    return out;
+  }
+
+  /* ================= STATE & HITUNGAN ================= */
+  const S = {rows: [], produk: [], bulan: '', mp: '', search: '', status: 'loading', at: null, error: ''};
+  const filtered = (opt) => S.rows.filter((r) => ((opt && opt.noBulan) || !S.bulan || r.bulan === S.bulan) && (!S.mp || r.marketplace === S.mp));
+  const sumQty = (a) => a.reduce((s, r) => s + (r.qty || 0), 0);
+  const groupBy = (rows, key) => { const m = {}; rows.forEach((r) => { const k = r[key]; const o = m[k] || (m[k] = {key: k, pesanan: 0, qty: 0}); o.pesanan++; o.qty += r.qty || 0; }); return Object.values(m); };
+  function perProduk(rows) {
+    const m = {};
+    rows.forEach((r) => { if (!r.produk) return; const ps = splitProduk(r.produk); ps.forEach((x) => { const o = m[x] || (m[x] = {key: x, pesanan: 0, qty: 0}); o.pesanan++; o.qty += (r.qty || 0) / ps.length; }); });
+    return Object.values(m).map((o) => ({...o, qty: Math.round(o.qty * 10) / 10})).sort((a, b) => b.qty - a.qty || b.pesanan - a.pesanan);
+  }
+  function ringkasan(rows) {
+    const qty = sumQty(rows), qk = (k) => sumQty(rows.filter((r) => r.kondisi === k));
+    const top = perProduk(rows)[0] || {key: '—', qty: 0};
+    const t = rows.map((r) => r.tgl_notifikasi).filter(Boolean).sort();
+    return {
+      pesanan: rows.length, qty, layak: qk('Masih bisa dipakai'), kemas: qk('Kemas Ulang'),
+      rusak: qk('Rusak Berat') + qk('Rusak Ringan'), rusakBerat: qk('Rusak Berat'),
+      pctLayak: qty ? Math.round(qk('Masih bisa dipakai') / qty * 100) : 0,
+      pctRusak: qty ? Math.round((qk('Rusak Berat') + qk('Rusak Ringan')) / qty * 100) : 0,
+      top: top.key, topQty: top.qty, cek: rows.filter((r) => r.cek).length, stokKosong: rows.filter((r) => !r.status_stok).length,
+      periode: t.length ? tglLabel(t[0]) + ' – ' + tglLabel(t[t.length - 1]) : '—'
+    };
+  }
+  function perBulan() {
+    const m = {};
+    filtered({noBulan: true}).filter((r) => r.bulan).forEach((r) => {
+      const o = m[r.bulan] || (m[r.bulan] = {bulan: r.bulan, pesanan: 0, qty: 0, shopee: 0, tiktok: 0, tokopedia: 0, lainnya: 0});
+      const q = r.qty || 0; o.pesanan++; o.qty += q;
+      if (r.marketplace === 'Shopee') o.shopee += q; else if (r.marketplace === 'TikTok Shop') o.tiktok += q; else if (r.marketplace === 'Tokopedia') o.tokopedia += q; else o.lainnya += q;
+    });
+    return Object.values(m).sort((a, b) => a.bulan.localeCompare(b.bulan));
+  }
+
+  /* ================= GAMBAR ================= */
+  const el = (tag, cls, text) => { const e = document.createElement(tag); if (cls) e.className = cls; if (text != null) e.textContent = text; return e; };
+  const msgBox = (box, text) => { box.replaceChildren(el('div', 'hr-msg', text)); };
+  const tipOf = (box) => { const t = el('div', 'hr-tip'); t.hidden = true; box.appendChild(t); return t; };
+  function showTip(box, tip, ev, lines) {
+    tip.replaceChildren();
+    lines.forEach(([b, t], i) => { if (i) tip.appendChild(document.createElement('br')); if (b) tip.appendChild(el('b', null, b)); if (t) tip.appendChild(document.createTextNode(t)); });
+    tip.hidden = false;
+    const r = box.getBoundingClientRect(); let x = ev.clientX - r.left + 12; const y = ev.clientY - r.top + 12;
+    const w = tip.offsetWidth; if (x + w > r.width) x = Math.max(0, ev.clientX - r.left - w - 12);
+    tip.style.left = x + 'px'; tip.style.top = y + 'px';
+  }
+  function stateMsg(box) {
+    if (S.status === 'loading' && !S.rows.length) { msgBox(box, 'Memuat data dari spreadsheet…'); return true; }
+    if (S.status === 'error' && !S.rows.length) { msgBox(box, 'Data belum bisa dimuat.'); return true; }
+    return false;
+  }
+
+  function drawBulan() {
+    const box = $('c-bulan'); if (stateMsg(box)) return;
+    const data = perBulan(); if (!data.length) return msgBox(box, 'Belum ada data.');
+    box.replaceChildren();
+    const W = box.clientWidth || 600, Hh = 260, m = {t: 18, r: 8, b: 26, l: 34};
+    const keys = [['shopee', 'Shopee'], ['tiktok', 'TikTok Shop'], ['tokopedia', 'Tokopedia'], ['lainnya', 'Lainnya']];
+    const x = d3.scaleBand().domain(data.map((r) => r.bulan)).range([m.l, W - m.r]).padding(0.25);
+    const y = d3.scaleLinear().domain([0, d3.max(data, (r) => r.qty) || 1]).nice().range([Hh - m.b, m.t]);
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${Hh}`).attr('role', 'img').attr('aria-label', 'Grafik batang qty retur per bulan per marketplace');
+    svg.append('g').attr('transform', `translate(${m.l},0)`).call(d3.axisLeft(y).ticks(5).tickSize(-(W - m.l - m.r))).call((g) => { g.select('.domain').remove(); g.selectAll('line').attr('stroke', '#2B2820'); });
+    const step = Math.ceil(data.length / Math.max(1, Math.floor((W - m.l) / 52)));
+    svg.append('g').attr('transform', `translate(0,${Hh - m.b})`).call(d3.axisBottom(x).tickFormat((b, i) => i % step ? '' : bulanLabel(b)).tickSize(0).tickPadding(8)).call((g) => g.select('.domain').attr('stroke', '#2B2820'));
+    const tip = tipOf(box);
+    data.forEach((r) => {
+      let y0 = 0;
+      const g = svg.append('g').style('cursor', 'pointer').attr('opacity', S.bulan && S.bulan !== r.bulan ? 0.35 : 1);
+      keys.forEach(([k, n]) => { const v = r[k]; if (!v) return; g.append('rect').attr('x', x(r.bulan)).attr('width', x.bandwidth()).attr('y', y(y0 + v)).attr('height', y(y0) - y(y0 + v)).attr('fill', MPC[n]); y0 += v; });
+      g.append('text').attr('class', 'val').attr('x', x(r.bulan) + x.bandwidth() / 2).attr('y', y(r.qty) - 5).attr('text-anchor', 'middle').text(fmt(r.qty));
+      g.append('rect').attr('x', x(r.bulan)).attr('width', x.bandwidth()).attr('y', m.t).attr('height', Hh - m.b - m.t).attr('fill', 'transparent')
+        .on('mousemove', (ev) => showTip(box, tip, ev, [[bulanLabel(r.bulan), ''], ['', fmt(r.qty) + ' pcs · ' + r.pesanan + ' pesanan'], ...keys.filter(([k]) => r[k]).map(([k, n]) => ['', n + ': ' + fmt(r[k]) + ' pcs'])]))
+        .on('mouseleave', () => { tip.hidden = true; })
+        .on('click', () => { S.bulan = S.bulan === r.bulan ? '' : r.bulan; render(); });
+    });
+  }
+
+  function hbars(box, data, valKey, color, extra, aria) {
+    box.replaceChildren();
+    const W = box.clientWidth || 400, rowH = 30, Hh = data.length * rowH + 6;
+    const svg = d3.select(box).append('svg').attr('width', '100%').attr('viewBox', `0 0 ${W} ${Hh}`).attr('role', 'img').attr('aria-label', aria);
+    const lw = Math.min(W * 0.45, 210);
+    const x = d3.scaleLinear().domain([0, d3.max(data, (r) => r[valKey]) || 1]).range([0, Math.max(10, W - lw - 80)]);
+    const tip = tipOf(box);
+    data.forEach((r, i) => {
+      const yy = i * rowH, g = svg.append('g');
+      const t = g.append('text').attr('class', 'lbl').attr('x', 0).attr('y', yy + 19).text(r.key);
+      let s = String(r.key); while (t.node().getComputedTextLength() > lw - 10 && s.length > 4) { s = s.slice(0, -2); t.text(s + '…'); }
+      const w = Math.max(2, x(r[valKey]));
+      g.append('rect').attr('x', lw).attr('y', yy + 6).attr('height', rowH - 12).attr('width', w).attr('rx', 3).attr('fill', typeof color === 'function' ? color(r) : color);
+      g.append('text').attr('class', 'val').attr('x', lw + w + 6).attr('y', yy + 19).text(fmt(r[valKey]) + (extra ? extra(r) : ''));
+      g.append('rect').attr('x', 0).attr('y', yy).attr('width', W).attr('height', rowH).attr('fill', 'transparent')
+        .on('mousemove', (ev) => showTip(box, tip, ev, [[r.key, ''], ['', fmt(r.qty) + ' pcs · ' + r.pesanan + ' pesanan' + (r.porsi != null ? ' · ' + r.porsi + '%' : '')]]))
+        .on('mouseleave', () => { tip.hidden = true; });
+    });
+  }
+
+  function withPorsi(list) { const tot = list.reduce((s, o) => s + o.qty, 0); return list.map((o) => ({...o, porsi: tot ? Math.round(o.qty / tot * 100) : 0})); }
+
+  function drawCharts(rows) {
+    const charts = [
+      ['c-mp', () => withPorsi(groupBy(rows, 'marketplace')).sort((a, b) => b.qty - a.qty), 'qty', (r) => MPC[r.key] || '#D4AF37', (r) => ' pcs · ' + r.porsi + '%', 'Qty retur per marketplace'],
+      ['c-kondisi', () => withPorsi(groupBy(rows, 'kondisi')).sort((a, b) => b.qty - a.qty), 'qty', (r) => KC[r.key] || '#D4AF37', (r) => ' pcs · ' + r.porsi + '%', 'Qty retur per kondisi barang'],
+      ['c-produk', () => perProduk(rows).slice(0, 10), 'qty', '#D4AF37', () => ' pcs', '10 produk dengan qty retur tertinggi'],
+      ['c-alasan', () => groupBy(rows, 'alasan').sort((a, b) => b.pesanan - a.pesanan), 'pesanan', '#F1DC8E', () => ' pesanan', 'Jumlah pesanan retur per alasan']
+    ];
+    charts.forEach(([id, fn, vk, color, extra, aria]) => {
+      const box = $(id); if (stateMsg(box)) return;
+      const data = fn(); if (!data.length) return msgBox(box, 'Tidak ada retur di filter ini.');
+      hbars(box, data, vk, color, extra, aria);
+    });
+  }
+
+  const td = (v, cls) => { const c = el('td', cls); if (v instanceof Node) c.appendChild(v); else c.textContent = v == null || v === '' ? '—' : v; return c; };
+  const pill = (k) => el('span', 'hr-pill ' + ({'Masih bisa dipakai': 'ok', 'Kemas Ulang': 'kemas', 'Rusak Ringan': 'rusak', 'Rusak Berat': 'rusak'}[k] || 'kosong'), k);
+  const emptyRow = (tb, n, text) => { const tr = el('tr'); const c = td(text); c.colSpan = n; tr.appendChild(c); tb.appendChild(tr); };
+
+  function drawTables(rows) {
+    const tb = $('t-detail'); tb.replaceChildren();
+    const q = S.search.trim().toLowerCase();
+    const list = rows.slice().sort((a, b) => (b.tgl_notifikasi || '').localeCompare(a.tgl_notifikasi || '') || b.no - a.no)
+      .filter((r) => !q || [r.id_pesanan, r.customer, r.produk].some((v) => (v || '').toLowerCase().includes(q)));
+    if (!S.rows.length) emptyRow(tb, 10, S.status === 'error' ? 'Data belum bisa dimuat.' : 'Memuat…');
+    list.forEach((r) => { const tr = el('tr'); tr.append(td(tglLabel(r.tgl_notifikasi)), td(r.marketplace), td(r.id_pesanan), td(r.customer), td(r.produk), td(r.qty == null ? '—' : fmt(r.qty), 'n'), td(r.alasan), td(r.status_barang), td(pill(r.kondisi)), td(r.status_stok)); tb.appendChild(tr); });
+    $('detail-count').textContent = S.rows.length ? list.length + ' dari ' + rows.length + ' baris' : '—';
+
+    const tc = $('t-cek'); tc.replaceChildren();
+    const cek = S.rows.filter((r) => r.cek);
+    if (!S.rows.length) emptyRow(tc, 6, S.status === 'error' ? 'Data belum bisa dimuat.' : 'Memuat…');
+    else if (!cek.length) emptyRow(tc, 6, 'Semua baris sudah rapi.');
+    cek.forEach((r) => { const tr = el('tr'); tr.append(td(r.no, 'n'), td(r.id_pesanan), td(r.tgl_notifikasi_asli), td(r.marketplace), td(r.produk), td(r.cek, 'issue')); tc.appendChild(tr); });
+  }
+
+  function drawHeader(k) {
+    const lead = $('lead');
+    if (!S.rows.length) { lead.textContent = S.status === 'error' ? 'Data belum bisa dimuat dari spreadsheet.' : 'Memuat data dari spreadsheet…'; return; }
+    lead.replaceChildren();
+    const b = (t) => el('b', null, t);
+    lead.append('Periode ', b(k.periode), ': tercatat ', b(fmt(k.pesanan)), ' pesanan retur berisi ', b(fmt(k.qty)), ' pcs. Produk paling sering kembali adalah ', b(k.top), ' (', b(fmt(k.topQty)), ' pcs), dan ', b(k.pctLayak + '%'), ' barang kembali masih bisa dipakai.');
+    const set = (id, v) => { $(id).textContent = v; };
+    set('k-pesanan', fmt(k.pesanan)); set('k-qty', fmt(k.qty)); set('k-layak', k.pctLayak); set('k-layak-qty', fmt(k.layak));
+    set('k-kemas', fmt(k.kemas)); set('k-rusak', fmt(k.rusak)); set('k-rusak-pct', k.pctRusak); set('k-rusak-berat', fmt(k.rusakBerat));
+    set('k-cek', fmt(k.cek)); set('k-stok', fmt(k.stokKosong));
+  }
+
+  function drawFilters() {
+    const fb = $('f-bulan'), fm = $('f-mp');
+    const bl = [...new Set(S.rows.map((r) => r.bulan).filter(Boolean))].sort().reverse();
+    const mp = [...new Set(S.rows.map((r) => r.marketplace))].sort();
+    if (S.bulan && !bl.includes(S.bulan)) S.bulan = '';
+    if (S.mp && !mp.includes(S.mp)) S.mp = '';
+    fb.replaceChildren(new Option('Semua bulan', ''), ...bl.map((b) => new Option(bulanLabel(b), b))); fb.value = S.bulan;
+    fm.replaceChildren(new Option('Semua marketplace', ''), ...mp.map((m) => new Option(m, m))); fm.value = S.mp;
+  }
+
+  function drawProdukSelects() {
+    document.querySelectorAll('.in-produk').forEach((sel) => {
+      const keep = sel.value;
+      sel.replaceChildren(new Option(S.produk.length ? 'Pilih produk…' : 'Memuat daftar produk…', ''), ...S.produk.map((p) => new Option(p, p)));
+      sel.value = S.produk.includes(keep) ? keep : '';
+    });
+  }
+
+  function drawSync() {
+    const dot = $('sync-dot'), txt = $('sync-text');
+    dot.className = 'dot ' + ({ok: 'ok', error: 'err', loading: 'load'}[S.status] || '');
+    if (S.status === 'loading') txt.textContent = 'Memuat…';
+    else if (S.status === 'error') txt.textContent = 'Gagal sinkron' + (S.at ? ' · data terakhir ' + S.at.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit'}) : '');
+    else if (S.at) txt.textContent = 'Tersinkron ' + S.at.toLocaleTimeString('id-ID', {hour: '2-digit', minute: '2-digit', second: '2-digit'});
+    const al = $('alert');
+    al.hidden = S.status !== 'error'; al.textContent = S.error || '';
+    $('btn-setting').hidden = !!inAppsScript;
+  }
+
+  function render() {
+    const rows = filtered();
+    drawSync(); drawFilters(); drawHeader(ringkasan(rows));
+    drawBulan(); drawCharts(rows); drawTables(rows);
+  }
+
+  /* ================= SINKRON ================= */
+  let loading = false;
+  function load() {
+    if (loading) return Promise.resolve();
+    loading = true; S.status = 'loading'; drawSync();
+    return callApi('data').then((j) => {
+      S.rows = parseRows(j.values); S.produk = j.produk || []; S.status = 'ok'; S.at = new Date(); S.error = '';
+      drawProdukSelects();
+    }).catch((e) => {
+      S.status = 'error';
+      S.error = e.code === 'no_config' ? 'Dashboard belum tersambung ke spreadsheet. Klik "Pengaturan" lalu isi URL Web App dan API token.'
+        : e.code === 'bad_token' ? 'API token salah. Klik "Pengaturan" untuk memperbaikinya.'
+        : 'Gagal mengambil data: ' + (e.message || e) + '. Dashboard akan mencoba lagi otomatis.';
+      if (e.code === 'no_config' || e.code === 'bad_token') openModal();
+    }).finally(() => { loading = false; render(); });
+  }
+  setInterval(() => { if (document.visibilityState === 'visible') load(); }, 60000);
+  document.addEventListener('visibilitychange', () => { if (document.visibilityState === 'visible' && S.at && Date.now() - S.at > 60000) load(); });
+
+  /* ================= INTERAKSI ================= */
+  $('f-bulan').addEventListener('change', (e) => { S.bulan = e.target.value; render(); });
+  $('f-mp').addEventListener('change', (e) => { S.mp = e.target.value; render(); });
+  $('reset-filter').addEventListener('click', () => { S.bulan = ''; S.mp = ''; S.search = ''; $('cari').value = ''; render(); });
+  $('cari').addEventListener('input', (e) => { S.search = e.target.value; drawTables(filtered()); });
+  $('btn-refresh').addEventListener('click', () => load());
+  let rt; window.addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(render, 150); });
+
+  function showTab(name) {
+    document.querySelectorAll('[data-tab]').forEach((b) => b.setAttribute('aria-selected', String(b.dataset.tab === name)));
+    $('tab-dashboard').hidden = name !== 'dashboard'; $('tab-input').hidden = name !== 'input';
+    $('filter').style.visibility = name === 'input' ? 'hidden' : 'visible';
+    if (name === 'dashboard') render();
+    try { history.replaceState(null, '', '#' + name); } catch (e) {}
+  }
+  document.querySelectorAll('[data-tab]').forEach((b) => b.addEventListener('click', () => showTab(b.dataset.tab)));
+
+  // Modal pengaturan (GitHub Pages)
+  function openModal() { if (inAppsScript) return; const c = cfg(); $('cfg-url').value = c.url; $('cfg-token').value = c.token; $('modal').hidden = false; }
+  $('btn-setting').addEventListener('click', openModal);
+  $('cfg-cancel').addEventListener('click', () => { $('modal').hidden = true; });
+  $('modal-form').addEventListener('submit', (e) => {
+    e.preventDefault();
+    const url = $('cfg-url').value.trim(), tok = $('cfg-token').value.trim();
+    if (!/^https:\/\/script\.google\.com\/.+\/exec$/.test(url)) { alert('URL harus URL Web App Apps Script yang berakhiran /exec'); return; }
+    if (!(window.HR_CONFIG && window.HR_CONFIG.apiUrl)) LS('hr_retur_url', url); else window.HR_CONFIG.apiUrl = url;
+    LS('hr_retur_token', tok);
+    $('modal').hidden = true; load();
+  });
+
+  /* ================= FORM INPUT ================= */
+  const MAX_LINES = 5;
+  function addLine() {
+    const box = $('in-lines'); const n = box.children.length; if (n >= MAX_LINES) { formMsg('Maksimal 5 produk per input. Simpan dulu, lalu input sisanya dengan ID yang sama.', 'warn'); return; }
+    const line = el('div', 'hr-line');
+    const lp = el('label', 'hr-field', 'Produk'); const sel = el('select', 'hr-in in-produk'); sel.setAttribute('aria-label', 'Produk ' + (n + 1)); lp.appendChild(sel);
+    const lq = el('label', 'hr-field', 'Qty'); const q = el('input', 'hr-in in-qty'); q.type = 'number'; q.min = '1'; q.step = '1'; q.value = '1'; lq.appendChild(q);
+    const ls = el('label', 'hr-field stok', 'Masuk stok'); const s = el('input', 'hr-in in-stok'); s.type = 'number'; s.min = '0'; s.step = '1'; s.placeholder = 'qty'; ls.appendChild(s);
+    const x = el('button', 'hr-x', '×'); x.type = 'button'; x.setAttribute('aria-label', 'Hapus produk'); x.disabled = n === 0;
+    x.addEventListener('click', () => { line.remove(); });
+    line.append(lp, lq, ls, x); box.appendChild(line);
+    drawProdukSelects();
+  }
+  const formMsg = (t, k) => { const m = $('in-msg'); m.textContent = t || ''; m.className = 'hr-formmsg ' + (k || 'info'); };
+  const val = (id) => String($(id).value || '').trim();
+  let confirmDup = null;
+  function resetForm() {
+    ['in-id', 'in-cust', 'in-catatan'].forEach((id) => { $(id).value = ''; }); $('in-mp').value = '';
+    $('in-lines').replaceChildren(); addLine(); confirmDup = null;
+  }
+  $('in-add').addEventListener('click', addLine);
+  $('in-clear').addEventListener('click', () => { resetForm(); formMsg(''); });
+  ['in-tn', 'in-td'].forEach((id) => { $(id).value = todayIso(); });
+
+  $('form-retur').addEventListener('submit', (ev) => {
+    ev.preventDefault();
+    const id = val('in-id').replace(/^'+/, ''), tn = val('in-tn'), tdv = val('in-td'), mp = val('in-mp');
+    const items = [...document.querySelectorAll('#in-lines .hr-line')].map((l) => ({
+      produk: l.querySelector('select').value, qty: Number(l.querySelector('.in-qty').value), stok: String(l.querySelector('.in-stok').value || '').trim()
+    }));
+    if (!id) return formMsg('ID pesanan wajib diisi.', 'err');
+    if (!tn || !$('in-tn').validity.valid) return formMsg('Tanggal notifikasi belum benar.', 'err');
+    if (!tdv || !$('in-td').validity.valid) return formMsg('Tanggal barang diterima belum benar.', 'err');
+    if (!mp) return formMsg('Pilih marketplace.', 'err');
+    if (!items.length || items.some((i) => !i.produk)) return formMsg('Pilih produk di setiap baris produk (atau hapus baris yang kosong).', 'err');
+    if (items.some((i) => !Number.isInteger(i.qty) || i.qty < 1)) return formMsg('Qty harus angka bulat minimal 1.', 'err');
+    if (items.some((i) => i.stok !== '' && (!/^\d+$/.test(i.stok) || Number(i.stok) > i.qty))) return formMsg('Masuk stok harus angka 0 sampai qty.', 'err');
+    const dup = S.rows.filter((r) => r.id_pesanan === id);
+    if (dup.length && confirmDup !== id) {
+      confirmDup = id;
+      return formMsg('ID ' + id + ' sudah ada di baris ' + dup.map((r) => r.no).join(', ') + ' (' + dup.map((r) => r.produk).join(', ') + '). Tekan Simpan sekali lagi kalau memang mau ditambahkan.', 'warn');
+    }
+    const rows = items.map((i) => ({id, tglNotifikasi: tn, tglDiterima: tdv, marketplace: mp, customer: val('in-cust'), produk: i.produk, qty: i.qty,
+      alasan: val('in-alasan'), status: val('in-status'), kondisi: val('in-kondisi'), stok: i.stok === '' ? '' : Number(i.stok), catatan: val('in-catatan')}));
+    const btn = $('in-save'); btn.disabled = true; formMsg('Menyimpan ke Google Sheet…', 'info');
+    callApi('append', rows).then((j) => {
+      resetForm();
+      formMsg('Tersimpan: ' + j.saved + ' baris (baris ' + j.startRow + (j.endRow > j.startRow ? '–' + j.endRow : '') + ' di sheet) untuk ID ' + id + '.', 'ok');
+      load();
+    }).catch((e) => {
+      formMsg(e.code === 'no_config' || e.code === 'bad_token' ? 'Koneksi belum benar. Klik "Pengaturan" dulu.'
+        : 'Gagal menyimpan: ' + (e.message || e) + ' Cek tabel detail setelah refresh sebelum menyimpan ulang, supaya tidak dobel.', 'err');
+    }).finally(() => { btn.disabled = false; });
+  });
+
+  /* ================= MULAI ================= */
+  addLine();
+  if (location.hash === '#input') showTab('input');
+  render();
+  load();
+})();
+</script>
+</body>
+</html>
