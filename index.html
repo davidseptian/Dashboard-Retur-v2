@@ -193,7 +193,7 @@ td.issue{color:#F0B37E}
 
       <section class="hr-card wide">
         <h2>Baris yang perlu dicek di spreadsheet</h2>
-        <p class="sub">Isian kosong, ID pesanan dobel, tanggal terima sebelum notifikasi, atau ID yang tidak cocok dengan marketplace. Nomor baris = baris di tab Input Return.</p>
+        <p class="sub">Isian kosong, ID + produk yang tercatat dua kali, ID dipakai customer/marketplace berbeda, tanggal terima sebelum notifikasi, atau ID yang tidak cocok dengan marketplace. Nomor baris = baris di tab Input Return.</p>
         <div class="hr-tablewrap" style="max-height:360px"><table>
           <thead><tr><th class="n">Baris</th><th>ID pesanan</th><th>Tgl notifikasi</th><th>Marketplace</th><th>Produk</th><th>Yang perlu dicek</th></tr></thead>
           <tbody id="t-cek"></tbody>
@@ -284,10 +284,17 @@ td.issue{color:#F0B37E}
         status_stok: g(r, 'ss'), catatan: g(r, 'ca'), tgl_notifikasi_asli: g(r, 'tn'), cek: ''
       });
     }
-    const cnt = {}; out.forEach((r) => { if (r.id_pesanan) cnt[r.id_pesanan] = (cnt[r.id_pesanan] || 0) + 1; });
+    const grp = {}; out.forEach((r) => { if (r.id_pesanan) (grp[r.id_pesanan] = grp[r.id_pesanan] || []).push(r); });
+    const nm = (s) => String(s || '').trim().toLowerCase();
     out.forEach((r) => {
       const c = [];
-      if (!r.id_pesanan) c.push('ID pesanan kosong'); else if (cnt[r.id_pesanan] > 1) c.push('ID pesanan dobel');
+      const same = r.id_pesanan ? grp[r.id_pesanan].filter((o) => o !== r) : [];
+      if (!r.id_pesanan) c.push('ID pesanan kosong');
+      else if (same.length) {
+        if (same.some((o) => nm(o.produk) === nm(r.produk))) c.push('ID pesanan dobel (produk sama)');
+        if (same.some((o) => o.customer && r.customer && nm(o.customer) !== nm(r.customer))) c.push('ID sama, customer berbeda');
+        if (same.some((o) => o.marketplace !== r.marketplace)) c.push('ID sama, marketplace berbeda');
+      }
       if (!r.produk) c.push('Produk kosong');
       if (r.qty == null) c.push('Qty kosong');
       if (r.marketplace === 'Belum diisi') c.push('Marketplace kosong');
@@ -566,10 +573,11 @@ td.issue{color:#F0B37E}
     if (!items.length || items.some((i) => !i.produk)) return formMsg('Pilih produk di setiap baris produk (atau hapus baris yang kosong).', 'err');
     if (items.some((i) => !Number.isInteger(i.qty) || i.qty < 1)) return formMsg('Qty harus angka bulat minimal 1.', 'err');
     if (items.some((i) => i.stok !== '' && (!/^\d+$/.test(i.stok) || Number(i.stok) > i.qty))) return formMsg('Masuk stok harus angka 0 sampai qty.', 'err');
-    const dup = S.rows.filter((r) => r.id_pesanan === id);
+    const pilih = items.map((i) => i.produk.toLowerCase());
+    const dup = S.rows.filter((r) => r.id_pesanan === id && pilih.includes(String(r.produk || '').trim().toLowerCase()));
     if (dup.length && confirmDup !== id) {
       confirmDup = id;
-      return formMsg('ID ' + id + ' sudah ada di baris ' + dup.map((r) => r.no).join(', ') + ' (' + dup.map((r) => r.produk).join(', ') + '). Tekan Simpan sekali lagi kalau memang mau ditambahkan.', 'warn');
+      return formMsg('ID ' + id + ' dengan produk yang sama sudah ada di baris ' + dup.map((r) => r.no + ' (' + r.produk + ')').join(', ') + '. Tekan Simpan sekali lagi kalau memang mau ditambahkan.', 'warn');
     }
     const rows = items.map((i) => ({id, tglNotifikasi: tn, tglDiterima: tdv, marketplace: mp, customer: val('in-cust'), produk: i.produk, qty: i.qty,
       alasan: val('in-alasan'), status: val('in-status'), kondisi: val('in-kondisi'), stok: i.stok === '' ? '' : Number(i.stok), catatan: val('in-catatan')}));
